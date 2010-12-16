@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.25.jb"
+#define DEBUG_VERSION "0.11.25.jb2"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -825,7 +825,8 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
 
     /* There can be many event calls per line, but we only want
      *one* breakpoint per line. */
-    if(debug_context->last_line != line || debug_context->last_file == NULL ||
+    if(!CTX_FL_TEST(debug_context, CTX_FL_FORCE_MOVE) ||
+       debug_context->last_line != line || debug_context->last_file == NULL ||
        strcmp(debug_context->last_file, file) != 0)
     {
         CTX_FL_SET(debug_context, CTX_FL_ENABLE_BKPT);
