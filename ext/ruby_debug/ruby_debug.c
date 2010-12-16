@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.25.jb2"
+#define DEBUG_VERSION "0.11.25.jb3"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -589,6 +589,7 @@ set_frame_source(rb_event_flag_t event, debug_context_t *debug_context, VALUE se
     top_frame = get_top_frame(debug_context);
     if(top_frame)
     {
+        top_frame->info.runtime.cfp = GET_THREAD()->cfp;
         if (top_frame->info.runtime.block_iseq == GET_THREAD()->cfp->iseq)
         {
             top_frame->info.runtime.block_pc = GET_THREAD()->cfp->pc;
