@@ -4,9 +4,9 @@ require 'rubygems'
 require 'rake/gempackagetask'
 require 'rake/rdoctask'
 require 'rake/testtask'
-require 'rake/extensiontask'
+#require 'rake/extensiontask'
 
-Rake::ExtensionTask.new('ruby_debug')
+#Rake::ExtensionTask.new('ruby_debug')
 
 SO_NAME = "ruby_debug.so"
 
@@ -62,9 +62,9 @@ EOF
   spec.required_ruby_version = '>= 1.8.2'
   spec.date = Time.now
   spec.rubyforge_project = 'ruby-debug19'
-  s.add_dependency('columnize', [">= 0.3.1"])
-  s.add_dependency('ruby_core_source', [">= 0.1.4"])
-  s.add_dependency('linecache19', [">= 0.5.11"])
+  spec.add_dependency('columnize', [">= 0.3.1"])
+  spec.add_dependency('ruby_core_source', [">= 0.1.4"])
+  spec.add_dependency('linecache19', [">= 0.5.11"])
   
   spec.test_files = FileList[BASE_TEST_FILE_LIST]
   
