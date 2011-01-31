@@ -39,7 +39,7 @@ BASE_FILES = COMMON_FILES + FileList[
 
 # Base GEM Specification
 base_spec = Gem::Specification.new do |spec|
-  spec.name = "ruby-debug-base19"
+  spec.name = "ruby-debug-base19x"
   
   spec.homepage = "http://rubyforge.org/projects/ruby-debug/"
   spec.summary = "Fast Ruby debugger - core component"
@@ -52,7 +52,7 @@ EOF
 
   spec.version = RUBY_DEBUG_VERSION
 
-  spec.author = "Kent Sibilev"
+  spec.author = "Kent Sibilev, Mark Moseley"
   spec.email = "ksibilev@yahoo.com"
   spec.platform = Gem::Platform::RUBY
   spec.require_path = "lib"
