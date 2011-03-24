@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.25"
+#define DEBUG_VERSION "0.11.26"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -841,7 +841,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     {
     case RUBY_EVENT_LINE:
     {
-        if(debug_context->stack_size == 0)
+        if(debug_context->stack_size == 0 || get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq)
             save_call_frame(event, debug_context, self, file, line, mid);
         else
             set_frame_source(event, debug_context, self, file, line, mid);
