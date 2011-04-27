@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.26"
+#define DEBUG_VERSION "0.11.27"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -19,6 +19,10 @@
 #endif
 
 #define STACK_SIZE_INCREMENT 128
+
+#ifndef METHOD_H
+#define RUBY_VERSION_1_9_1
+#endif
 
 RUBY_EXTERN int rb_vm_get_sourceline(const rb_control_frame_t *cfp); /* from vm.c */
 RUBY_EXTERN VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE line, VALUE opt); /* from iseq.c */
@@ -841,7 +845,9 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     {
     case RUBY_EVENT_LINE:
     {
-        if(debug_context->stack_size == 0 || get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq)
+        if(debug_context->stack_size == 0 || 
+           get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq ||
+           get_top_frame(debug_context)->info.runtime.cfp->iseq != thread->cfp->iseq)
             save_call_frame(event, debug_context, self, file, line, mid);
         else
             set_frame_source(event, debug_context, self, file, line, mid);
