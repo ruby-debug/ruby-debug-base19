@@ -128,3 +128,11 @@ task :clean do
   end
 end
 
+desc "Test ruby-debug-base."
+task :test_base => :lib do 
+  Rake::TestTask.new(:test_base) do |t|
+    t.libs += ['./ext', './lib']
+    t.test_files = FileList[BASE_TEST_FILE_LIST]
+    t.verbose = true
+  end
+end
