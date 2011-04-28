@@ -20,10 +20,6 @@
 
 #define STACK_SIZE_INCREMENT 128
 
-#ifndef METHOD_H
-#define RUBY_VERSION_1_9_1
-#endif
-
 RUBY_EXTERN int rb_vm_get_sourceline(const rb_control_frame_t *cfp); /* from vm.c */
 RUBY_EXTERN VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE line, VALUE opt); /* from iseq.c */
 
