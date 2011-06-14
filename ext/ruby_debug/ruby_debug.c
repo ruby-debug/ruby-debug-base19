@@ -1832,7 +1832,8 @@ context_frame_file(int argc, VALUE *argv, VALUE self)
     frame = optional_frame_position(argc, argv);
     Data_Get_Struct(self, debug_context_t, debug_context);
 
-    return(GET_FRAME->info.runtime.cfp->iseq->filename);
+	return rb_str_new_cstr(GET_FRAME->file);
+    //return(GET_FRAME->info.runtime.cfp->iseq->filename);
 }
 
 static int
