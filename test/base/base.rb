@@ -9,25 +9,26 @@ class TestRubyDebug < Test::Unit::TestCase
 
   # test current_context
   def test_current_context
-    assert_equal(false, Debugger.started?, 
+    assert_equal(false, Debugger.started?,
                  'debugger should not initially be started.')
     Debugger.start_
-    assert(Debugger.started?, 
+    assert(Debugger.started?,
            'debugger should now be started.')
     assert_equal(__LINE__, Debugger.current_context.frame_line)
     assert_equal(nil, Debugger.current_context.frame_args_info,
                  'no frame args info.')
-    assert_equal(Debugger.current_context.frame_file, 
+    assert_equal(Debugger.current_context.frame_file,
                  Debugger.current_context.frame_file(0))
     assert_equal(File.basename(__FILE__),
                  File.basename(Debugger.current_context.frame_file))
     assert_raises(ArgumentError) {Debugger.current_context.frame_file(1, 2)}
-    assert_raises(ArgumentError) {Debugger.current_context.frame_file(10)}
-    assert_equal(1, Debugger.current_context.stack_size)
+    assert_raises(ArgumentError) {Debugger.current_context.frame_file(300)}
+    assert_equal(3, Debugger.current_context.stack_size)
     assert_equal(TestRubyDebug, Debugger.current_context.frame_class)
     assert_equal(false, Debugger.current_context.dead?, 'Not dead yet!')
+  ensure
     Debugger.stop
-    assert_equal(false, Debugger.started?, 
+    assert_equal(false, Debugger.started?,
                  'Debugger should no longer be started.')
   end
 
@@ -47,6 +48,7 @@ class TestRubyDebug < Test::Unit::TestCase
                  'There should only be one context.')
     assert_equal(Array, a.class, 
                  'Context should be an array.')
+  ensure
     Debugger.stop
     assert_equal(false, Debugger.started?, 
                  'debugger should no longer be started.')
@@ -68,6 +70,7 @@ class TestRubyDebug < Test::Unit::TestCase
     Debugger.remove_breakpoint(1)
     assert_equal(0, Debugger.breakpoints.size,
                  'There should no longer be any breakpoints set.')
+  ensure
     Debugger.stop
   end
 end
