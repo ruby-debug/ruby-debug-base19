@@ -1,4 +1,4 @@
-require 'ruby_debug.so'
+require 'ruby_debug'
 require 'rubygems'
 require 'linecache19'
 
