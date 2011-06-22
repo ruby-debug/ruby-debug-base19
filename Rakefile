@@ -6,10 +6,7 @@ require 'bundler/gem_tasks'
 require 'rake/rdoctask'
 require 'rake/testtask'
 
-BASE_TEST_FILE_LIST = %w(
-  test/base/base.rb 
-  test/base/binding.rb 
-  test/base/catchpoint.rb)
+BASE_TEST_FILE_LIST = Dir['test/**/*_test.rb']
 
 task :default => [:test_base]
 

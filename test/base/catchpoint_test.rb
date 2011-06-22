@@ -1,14 +1,9 @@
 #!/usr/bin/env ruby
-require 'test/unit'
+require_relative 'debug_test_base'
 
 # Test catchpoint in C ruby_debug extension.
   
-class TestRubyDebugCatchpoint < Test::Unit::TestCase
-
-  $:.unshift File.join(File.dirname(__FILE__), '..', '..', 'ext')
-  require 'ruby_debug'
-  $:.shift
-
+class TestRubyDebugCatchpoint < DebugTestBase
   # test current_context
   def test_catchpoints
     assert_raise(RuntimeError) {Debugger.catchpoints}
