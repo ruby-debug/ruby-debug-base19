@@ -20,7 +20,7 @@ end
 Gem::Specification.new do |spec|
   spec.name = "ruby-debug-base19x"
 
-  spec.homepage = "https://github.com/denofevil/ruby-debug-base19"
+  spec.homepage = "https://github.com/JetBrains/ruby-debug-base19"
   spec.summary = "Fast Ruby debugger - core component"
   spec.description = <<-EOF
 ruby-debug is a fast implementation of the standard Ruby debugger debug.rb.
