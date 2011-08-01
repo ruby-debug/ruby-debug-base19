@@ -16,6 +16,10 @@ if RUBY_VERSION == '1.9.1'
   $CFLAGS << ' -DRUBY_VERSION_1_9_1'
 end
 
+if RUBY_REVISION >= 26959 # rb_iseq_compile_with_option was added an argument filepath  
+  $CFLAGS << ' -DRB_ISEQ_COMPILE_6ARGS'
+end
+
 dir_config("ruby")
 if !Ruby_core_source::create_makefile_with_core(hdrs, "ruby_debug")
   STDERR.print("Makefile creation failed\n")
