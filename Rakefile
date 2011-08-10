@@ -3,7 +3,6 @@
 require 'rubygems'
 
 require 'bundler/gem_tasks'
-require 'rake/rdoctask'
 require 'rake/testtask'
 
 BASE_TEST_FILE_LIST = Dir['test/**/*_test.rb']
