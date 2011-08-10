@@ -38,7 +38,7 @@ EOF
   spec.extensions = ["ext/ruby_debug/extconf.rb"]
   spec.files = FILES
 
-  spec.required_ruby_version = '>= 1.8.2'
+  spec.required_ruby_version = '>= 1.9'
   spec.date = Time.now
   spec.rubyforge_project = 'ruby-debug19'
   spec.add_dependency('columnize', [">= 0.3.1"])
