@@ -645,7 +645,7 @@ c_call_new_frame_p(VALUE klass, ID mid)
 {
     klass = real_class(klass);
     if(rb_block_given_p()) return 1;
-    if(klass == rb_cProc || klass == rb_mKernel || klass == rb_cModule) return 1;
+    if(klass == rb_cProc || klass == rb_mKernel || klass == rb_cModule /*|| klass == rb_cFixnum*/) return 1;
     return 0;
 }
 
@@ -865,21 +865,27 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
             {
                 rb_control_frame_t *cfp = top_frame->info.runtime.cfp;
                 VALUE hit_count;
+                rb_iseq_t *iseq = cfp->iseq; 
 
-                /* restore the proper catch table */
-                cfp->iseq->catch_table_size = debug_context->catch_table.old_catch_table_size;
-                cfp->iseq->catch_table = debug_context->catch_table.old_catch_table;
+                if (iseq != NULL) {
+                    /* restore the proper catch table */
+                    iseq->catch_table_size = debug_context->catch_table.old_catch_table_size;
+                    iseq->catch_table = debug_context->catch_table.old_catch_table;
+                }
                 
                 /* send catchpoint notification */
-                int c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
-                hit_count = INT2FIX(c_hit_count);
-                rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
+                if(debug == Qtrue)
+                  fprintf(stderr, "modname: %s\n", RSTRING_PTR(debug_context->catch_table.mod_name));
+                // int c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
+                // hit_count = INT2FIX(c_hit_count);
+                // rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
                 debug_context->stop_reason = CTX_STOP_CATCHPOINT;
                 rb_funcall(context, idAtCatchpoint, 1, debug_context->catch_table.errinfo);
                 if(self && binding == Qnil)
                     binding = create_binding(self);
                 save_top_binding(debug_context, binding);
                 call_at_line(context, debug_context, rb_str_new2(file), INT2FIX(line));
+                rb_raise(rb_eRuntimeError, "rise up");
             }
 
             /* now allow the next exception to be caught */
@@ -1000,7 +1006,12 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
         VALUE expn_class, aclass;
         int i;
 
-        set_frame_source(event, debug_context, self, file, line, mid);
+        if(debug == Qtrue) {
+          fprintf(stderr, "stack_size %d\n", debug_context->stack_size);
+          for (i = 0; i < debug_context->stack_size; i++) {
+             fprintf(stderr, "%s:%d, iseq: %p\n", FRAME_N(i)->file, FRAME_N(i)->line, FRAME_N(i)->info.runtime.cfp->iseq); 
+          }
+        }
 
         if(post_mortem == Qtrue && self)
         {
@@ -1054,18 +1065,23 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
             {
                 debug_frame_t *top_frame = get_top_frame(debug_context);
                 rb_control_frame_t *cfp = top_frame->info.runtime.cfp;
-
-               /* save the current catch table */
-                CTX_FL_SET(debug_context, CTX_FL_CATCHING);
-                debug_context->catch_table.old_catch_table_size = cfp->iseq->catch_table_size;
-                debug_context->catch_table.old_catch_table = cfp->iseq->catch_table;
+                rb_iseq_t *iseq = cfp->iseq;
+                
                 debug_context->catch_table.mod_name = mod_name;
                 debug_context->catch_table.errinfo = rb_errinfo();
+                CTX_FL_SET(debug_context, CTX_FL_CATCHING);
+                if (iseq != NULL) {
+                                    
+                   /* save the current catch table */
+                    debug_context->catch_table.old_catch_table_size = iseq->catch_table_size;
+                    debug_context->catch_table.old_catch_table = iseq->catch_table;
+                    
 
-                /* create a new catch table to catch this exception, and put it in the current iseq */
-                cfp->iseq->catch_table_size = 1;
-                cfp->iseq->catch_table =
-                    create_catch_table(debug_context, top_frame->info.runtime.last_pc - cfp->iseq->iseq_encoded - insn_len(BIN(trace)));
+                    /* create a new catch table to catch this exception, and put it in the current iseq */
+                    iseq->catch_table_size = 1;
+                    iseq->catch_table =
+                    create_catch_table(debug_context, top_frame->info.runtime.last_pc - cfp->iseq->iseq_encoded - insn_len(BIN(trace)));    
+                }
             }
         }
 
