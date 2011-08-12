@@ -13,6 +13,7 @@ desc "Create the core ruby-debug shared library extension"
 task :lib do
   Dir.chdir("ext/ruby_debug") do
     system("#{Gem.ruby} extconf.rb && make")
+    exit $?.to_i if $?.to_i != 0
   end
 end
 
