@@ -644,6 +644,8 @@ inline static int
 c_call_new_frame_p(VALUE klass, ID mid)
 {
     klass = real_class(klass);
+//    if ((klass == rb_mKernel) && (strcmp(rb_id2name(mid), "raise") == 0)) return 0;
+
     if(rb_block_given_p()) return 1;
     if(klass == rb_cProc || klass == rb_mKernel || klass == rb_cModule /*|| klass == rb_cFixnum*/) return 1;
     return 0;
@@ -851,12 +853,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     {
     case RUBY_EVENT_LINE:
     {
-        if(debug_context->stack_size == 0 || 
-           get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq ||
-           get_top_frame(debug_context)->info.runtime.cfp->iseq != thread->cfp->iseq)
-            save_call_frame(event, debug_context, self, file, line, mid);
-        else
-            set_frame_source(event, debug_context, self, file, line, mid);
         if (CTX_FL_TEST(debug_context, CTX_FL_CATCHING))
         {
             debug_frame_t *top_frame = get_top_frame(debug_context);
@@ -873,25 +869,26 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
                     iseq->catch_table = debug_context->catch_table.old_catch_table;
                 }
                 
-                /* send catchpoint notification */
-                if(debug == Qtrue)
-                  fprintf(stderr, "modname: %s\n", RSTRING_PTR(debug_context->catch_table.mod_name));
-                // int c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
-                // hit_count = INT2FIX(c_hit_count);
-                // rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
+                /* send catchpoint notification */                
+                int c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
+                hit_count = INT2FIX(c_hit_count);
+                rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
                 debug_context->stop_reason = CTX_STOP_CATCHPOINT;
                 rb_funcall(context, idAtCatchpoint, 1, debug_context->catch_table.errinfo);
                 if(self && binding == Qnil)
                     binding = create_binding(self);
                 save_top_binding(debug_context, binding);
-                call_at_line(context, debug_context, rb_str_new2(file), INT2FIX(line));
-                rb_raise(rb_eRuntimeError, "rise up");
+                call_at_line(context, debug_context, rb_str_new2(top_frame->file), INT2FIX(top_frame->line));
             }
-
-            /* now allow the next exception to be caught */
-            CTX_FL_UNSET(debug_context, CTX_FL_CATCHING);
+            
             break;
         }
+        if(debug_context->stack_size == 0 || 
+           get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq ||
+           get_top_frame(debug_context)->info.runtime.cfp->iseq != thread->cfp->iseq)
+            save_call_frame(event, debug_context, self, file, line, mid);
+        else
+            set_frame_source(event, debug_context, self, file, line, mid);
 
         if(RTEST(tracing) || CTX_FL_TEST(debug_context, CTX_FL_TRACING))
             rb_funcall(context, idAtTracing, 2, rb_str_new2(file), INT2FIX(line));
@@ -1002,6 +999,13 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     }
     case RUBY_EVENT_RAISE:
     {
+        if (CTX_FL_TEST(debug_context, CTX_FL_CATCHING)) {
+          /* we're re-raising exception after processing line event, 
+          now allow the next exception to be caught, don't setup catchers */
+          CTX_FL_UNSET(debug_context, CTX_FL_CATCHING);
+          break;    
+        }
+
         VALUE ancestors;
         VALUE expn_class, aclass;
         int i;
@@ -1080,7 +1084,8 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
                     /* create a new catch table to catch this exception, and put it in the current iseq */
                     iseq->catch_table_size = 1;
                     iseq->catch_table =
-                    create_catch_table(debug_context, top_frame->info.runtime.last_pc - cfp->iseq->iseq_encoded - insn_len(BIN(trace)));    
+                    create_catch_table(debug_context, top_frame->info.runtime.last_pc - cfp->iseq->iseq_encoded - insn_len(BIN(trace)));
+                    break;    
                 }
             }
         }
