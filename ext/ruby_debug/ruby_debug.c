@@ -476,7 +476,7 @@ call_at_line_unprotected(VALUE args)
 {
     VALUE context;
     context = *RARRAY_PTR(args);
-    return rb_funcall2(context, idAtLine, RARRAY_LEN(args) - 1, RARRAY_PTR(args) + 1);
+    return rb_funcall2(context, idAtLine, (int)RARRAY_LEN(args) - 1, RARRAY_PTR(args) + 1);
 }
 
 static VALUE
@@ -536,8 +536,8 @@ int
 filename_cmp(VALUE source, char *file)
 {
     char *source_ptr, *file_ptr;
-    int s_len, f_len, min_len;
-    int s,f;
+    long s_len, f_len, min_len;
+    long s,f;
     int dirsep_flag = 0;
 
     s_len = RSTRING_LEN(source);
@@ -1740,7 +1740,7 @@ check_frame_number(debug_context_t *debug_context, VALUE frame)
     return frame_n;
 }
 
-static int 
+static long 
 optional_frame_position(int argc, VALUE *argv) {
   unsigned int i_scanned;
   VALUE level;
@@ -2366,7 +2366,7 @@ FUNC_FASTCALL(do_jump)(rb_thread_t *th, rb_control_frame_t *cfp)
            +1 for target frame
            +1 for array terminator
          */
-        int frames = jump_cfp - cfp + 2;
+        long frames = jump_cfp - cfp + 2;
         debug_context->old_iseq_catch = (iseq_catch_t*)malloc(frames * sizeof(iseq_catch_t));
         MEMZERO(debug_context->old_iseq_catch, iseq_catch_t, frames);
         frames = 0;
@@ -2410,7 +2410,7 @@ context_jump(VALUE self, VALUE line, VALUE file)
 {
     debug_context_t *debug_context;
     debug_frame_t *debug_frame;
-    int i;
+    unsigned i;
     rb_thread_t *th;
     rb_control_frame_t *cfp;
     rb_control_frame_t *cfp_end;
@@ -2434,7 +2434,7 @@ context_jump(VALUE self, VALUE line, VALUE file)
         if (cfp->pc == debug_frame->info.runtime.last_pc)
         {
             cfp_start = cfp;
-            if ((cfp->pc - cfp->iseq->iseq_encoded) >= (cfp->iseq->iseq_size - 1))
+            if ((unsigned)(cfp->pc - cfp->iseq->iseq_encoded) >= (cfp->iseq->iseq_size - 1))
                 return(INT2FIX(1)); /* no space for opt_call_c_function hijack */
             break;
         }
