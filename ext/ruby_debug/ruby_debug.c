@@ -20,12 +20,12 @@
 
 #define STACK_SIZE_INCREMENT 128
 
-RUBY_EXTERN int rb_vm_get_sourceline(const rb_control_frame_t *cfp); /* from vm.c */
+int rb_vm_get_sourceline(const rb_control_frame_t *cfp); /* from vm.c */
 /* from iseq.c */
 #ifdef RB_ISEQ_COMPILE_6ARGS
-RUBY_EXTERN VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE filepath, VALUE line, VALUE opt);
+VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE filepath, VALUE line, VALUE opt);
 #else
-RUBY_EXTERN VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE line, VALUE opt);
+VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE line, VALUE opt);
 #endif
 
 typedef struct {
@@ -861,6 +861,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
             {
                 rb_control_frame_t *cfp = top_frame->info.runtime.cfp;
                 VALUE hit_count;
+                int c_hit_count;
                 rb_iseq_t *iseq = cfp->iseq; 
 
                 if (iseq != NULL) {
@@ -870,7 +871,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
                 }
                 
                 /* send catchpoint notification */                
-                int c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
+                c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
                 hit_count = INT2FIX(c_hit_count);
                 rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
                 debug_context->stop_reason = CTX_STOP_CATCHPOINT;
@@ -999,16 +1000,16 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     }
     case RUBY_EVENT_RAISE:
     {
+        VALUE ancestors;
+        VALUE expn_class, aclass;
+        int i;
+
         if (CTX_FL_TEST(debug_context, CTX_FL_CATCHING)) {
           /* we're re-raising exception after processing line event, 
           now allow the next exception to be caught, don't setup catchers */
           CTX_FL_UNSET(debug_context, CTX_FL_CATCHING);
           break;    
         }
-
-        VALUE ancestors;
-        VALUE expn_class, aclass;
-        int i;
 
         if(debug == Qtrue) {
           fprintf(stderr, "stack_size %d\n", debug_context->stack_size);

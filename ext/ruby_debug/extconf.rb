@@ -3,7 +3,7 @@ require "ruby_core_source"
 
 hdrs = proc {
   have_struct_member("rb_method_entry_t", "body", "method.h")
-  have_header("vm_core.h") and have_header("iseq.h") and have_header("insns.inc") and 
+  have_header("vm_core.h") and have_header("iseq.h", "vm_core.h") and have_header("insns.inc") and
   have_header("insns_info.inc") and have_header("eval_intern.h")
 }
 
