@@ -137,19 +137,12 @@ real_class(VALUE klass)
 inline static void *
 ruby_method_ptr(VALUE class, ID meth_id)
 {
-#ifdef RUBY_VERSION_1_9_1
-    NODE *body, *method;
-    st_lookup(RCLASS_M_TBL(class), meth_id, (st_data_t *)&body);
-    method = (NODE *)body->u2.value;
-    return (void *)method->u2.node->u1.value;
-#else
     rb_method_entry_t * method;
     method = rb_method_entry(class, meth_id);
 #ifdef HAVE_ST_BODY
     return (void *)method->body.cfunc.func;
 #else
     return (void *)method->def->body.cfunc.func;
-#endif
 #endif
 }
 
@@ -190,6 +183,21 @@ context_thread_0(debug_context_t *debug_context)
 {
     return id2ref(debug_context->thread_id);
 }
+
+static inline const rb_data_type_t *
+threadptr_data_type(void)
+{
+    static const rb_data_type_t *thread_data_type;
+    if (!thread_data_type) {
+	VALUE current_thread = rb_thread_current();
+	thread_data_type = RTYPEDDATA_TYPE(current_thread);
+    }
+    return thread_data_type;
+}
+
+#define ruby_threadptr_data_type *threadptr_data_type()
+
+#define ruby_current_thread ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()))
 
 static int
 is_in_locked(VALUE thread_id)
@@ -253,7 +261,7 @@ static void
 threads_table_mark(void* data)
 {
     threads_table_t *threads_table = (threads_table_t*)data;
-    st_foreach(threads_table->tbl, threads_table_mark_keyvalue, 0);
+    rb_mark_tbl(threads_table->tbl);
 }
 
 static void
@@ -726,11 +734,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     char *file = (char*)rb_sourcefile();
     int line = rb_sourceline();
     int moved = 0;
-#ifdef RUBY_VERSION_1_9_1
-    NODE *node = NULL;
-#else
     rb_method_entry_t *me = NULL;
-#endif
     rb_thread_t *thread = GET_THREAD();
     struct rb_iseq_struct *iseq = thread->cfp->iseq;
 
@@ -748,11 +752,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
 
     if (mid == ID_ALLOCATOR) return;
 
-#ifdef RUBY_VERSION_1_9_1
-    node = rb_method_node(klass, mid);
-#else
     me = rb_method_entry(klass, mid);
-#endif
 
     /* return if thread is marked as 'ignored'.
        debugger's threads are marked this way
@@ -964,11 +964,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     case RUBY_EVENT_C_RETURN:
     {
         /* note if a block is given we fall through! */
-#ifdef RUBY_VERSION_1_9_1
-        if(!node || !c_call_new_frame_p(klass, mid))
-#else
         if(!me || !c_call_new_frame_p(klass, mid))
-#endif
             break;
     }
     case RUBY_EVENT_RETURN:
