@@ -12,16 +12,21 @@ hdrs = proc {
   end and
   have_header("vm_core.h") and have_header("iseq.h") and have_header("insns.inc") and
   have_header("insns_info.inc") and have_header("eval_intern.h")
-}
-
-if RUBY_REVISION >= 26959 # rb_iseq_compile_with_option was added an argument filepath  
+  if checking_for(checking_message("if rb_iseq_compile_with_option was added an argument filepath")) do
+    try_compile(<<SRC)
+#include <ruby.h>
+#include "vm_core.h"
+extern VALUE rb_iseq_new_main(NODE *node, VALUE filename, VALUE filepath);
+SRC
+    end
   $defs << '-DRB_ISEQ_COMPILE_5ARGS'
-end
+  end
+}
 
 dir_config("ruby")
 name = "ruby_debug"
 if (ENV['rvm_ruby_string'])
-  dest_dir = Config::CONFIG["rubyhdrdir"]
+  dest_dir = RbConfig::CONFIG["rubyhdrdir"]
   with_cppflags("-I" + dest_dir) {
     if hdrs.call
       create_makefile(name)
