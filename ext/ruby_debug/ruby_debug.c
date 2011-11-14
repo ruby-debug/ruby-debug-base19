@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre3"
+#define DEBUG_VERSION "0.11.30.pre4"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -134,55 +134,16 @@ real_class(VALUE klass)
     return klass;
 }
 
-inline static void *
-ruby_method_ptr(VALUE class, ID meth_id)
-{
-#ifndef HAVE_RB_METHOD_ENTRY
-    NODE *body, *method;
-    st_lookup(RCLASS_M_TBL(class), meth_id, (st_data_t *)&body);
-    method = (NODE *)body->u2.value;
-    return (void *)method->u2.node->u1.value;
-#else
-    rb_method_entry_t * method;
-    method = rb_method_entry(class, meth_id);
-#ifdef HAVE_ST_BODY
-    return (void *)method->body.cfunc.func;
-#else
-    return (void *)method->def->body.cfunc.func;
-#endif
-#endif
-}
-
 inline static VALUE
 ref2id(VALUE obj)
 {
-    return rb_obj_id(obj);
+    return obj;
 }
 
-static VALUE
-id2ref_unprotected(VALUE id)
-{
-    typedef VALUE (*id2ref_func_t)(VALUE, VALUE);
-    static id2ref_func_t f_id2ref = NULL;
-    if(f_id2ref == NULL)
-    {
-        f_id2ref = (id2ref_func_t)ruby_method_ptr(rb_mObjectSpace, rb_intern("_id2ref"));
-    }
-    return f_id2ref(rb_mObjectSpace, id);
-}
-
-static VALUE
-id2ref_error()
-{
-    if(debug == Qtrue)
-        rb_p(rb_errinfo());
-    return Qnil;
-}
-
-static VALUE
+inline static VALUE
 id2ref(VALUE id)
 {
-    return rb_rescue(id2ref_unprotected, id, id2ref_error, 0);
+    return id;
 }
 
 inline static VALUE
@@ -256,10 +217,22 @@ remove_from_locked()
     return thread;
 }
 
+static int is_living_thread(VALUE thread);
+
 static int
-threads_table_mark_keyvalue(VALUE key, VALUE value, int dummy)
+threads_table_mark_keyvalue(st_data_t key, st_data_t value, st_data_t tbl)
 {
-    rb_gc_mark(value);
+    VALUE thread = id2ref((VALUE)key);
+    if (!value) {
+        return ST_CONTINUE;
+    }
+    rb_gc_mark((VALUE)value);
+    if (is_living_thread(thread)) {
+    rb_gc_mark(thread);
+    }
+    else {
+    st_insert((st_table *)tbl, key, 0);
+    }
     return ST_CONTINUE;
 }
 
@@ -267,7 +240,8 @@ static void
 threads_table_mark(void* data)
 {
     threads_table_t *threads_table = (threads_table_t*)data;
-    st_foreach(threads_table->tbl, threads_table_mark_keyvalue, 0);
+    st_table *tbl = threads_table->tbl;
+    st_foreach(tbl, threads_table_mark_keyvalue, (st_data_t)tbl);
 }
 
 static void
@@ -279,7 +253,7 @@ threads_table_free(void* data)
 }
 
 static VALUE
-threads_table_create()
+threads_table_create(void)
 {
     threads_table_t *threads_table;
 
@@ -288,44 +262,40 @@ threads_table_create()
     return Data_Wrap_Struct(cThreadsTable, threads_table_mark, threads_table_free, threads_table);
 }
 
-static int
-threads_table_clear_i(VALUE key, VALUE value, VALUE dummy)
-{
-    return ST_DELETE;
-}
-
 static void
 threads_table_clear(VALUE table)
 {
     threads_table_t *threads_table;
 
     Data_Get_Struct(table, threads_table_t, threads_table);
-    st_foreach(threads_table->tbl, threads_table_clear_i, 0);
-}
-
-static VALUE
-is_thread_alive(VALUE thread)
-{
-    typedef VALUE (*thread_alive_func_t)(VALUE);
-    static thread_alive_func_t f_thread_alive = NULL;
-    if(!f_thread_alive)
-    {
-        f_thread_alive = (thread_alive_func_t)ruby_method_ptr(rb_cThread, rb_intern("alive?"));
-    }
-    return f_thread_alive(thread);
+    st_clear(threads_table->tbl);
 }
 
 static int
-threads_table_check_i(VALUE key, VALUE value, VALUE dummy)
+is_thread_alive(VALUE thread)
+{
+    rb_thread_t *th;
+    GetThreadPtr(thread, th);
+    return th->status != THREAD_KILLED;
+}
+
+static int
+is_living_thread(VALUE thread)
+{
+    return rb_obj_is_kind_of(thread, rb_cThread) && is_thread_alive(thread);
+}
+
+static int
+threads_table_check_i(st_data_t key, st_data_t value, st_data_t dummy)
 {
     VALUE thread;
 
-    thread = id2ref(key);
-    if(!rb_obj_is_kind_of(thread, rb_cThread))
+    if(!value)
     {
         return ST_DELETE;
     }
-    if(rb_protect(is_thread_alive, thread, 0) != Qtrue)
+    thread = id2ref((VALUE)key);
+    if(!is_living_thread(thread))
     {
         return ST_DELETE;
     }
@@ -333,7 +303,7 @@ threads_table_check_i(VALUE key, VALUE value, VALUE dummy)
 }
 
 static void
-check_thread_contexts()
+check_thread_contexts(void)
 {
     threads_table_t *threads_table;
 
@@ -740,11 +710,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     char *file = (char*)rb_sourcefile();
     int line = rb_sourceline();
     int moved = 0;
-#ifndef HAVE_RB_METHOD_ENTRY
-    NODE *node = NULL;
-#else
-    rb_method_entry_t *me = NULL;
-#endif
     rb_thread_t *thread = GET_THREAD();
     struct rb_iseq_struct *iseq = thread->cfp->iseq;
 
@@ -761,12 +726,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     }
 
     if (mid == ID_ALLOCATOR) return;
-
-#ifndef HAVE_RB_METHOD_ENTRY
-    node = rb_method_node(klass, mid);
-#else
-    me = rb_method_entry(klass, mid);
-#endif
 
     /* return if thread is marked as 'ignored'.
        debugger's threads are marked this way
@@ -978,11 +937,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     case RUBY_EVENT_C_RETURN:
     {
         /* note if a block is given we fall through! */
-#ifndef HAVE_RB_METHOD_ENTRY
-        if(!node || !c_call_new_frame_p(klass, mid))
-#else
-        if(!me || !c_call_new_frame_p(klass, mid))
-#endif
+        if(!rb_method_boundp(klass, mid, 0) || !c_call_new_frame_p(klass, mid))
             break;
     }
     case RUBY_EVENT_RETURN:
