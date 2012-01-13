@@ -2,4 +2,8 @@
 *.o
 *.so
 *.def
+*.bundle
+.DS_Store
+ext/ruby_debug/Makefile
+ext/ruby_debug/mkmf.log
 /nbproject/private/
