@@ -36,6 +36,7 @@ static VALUE tracing            = Qfalse;
 static VALUE locker             = Qnil;
 static VALUE post_mortem        = Qfalse;
 static VALUE keep_frame_binding = Qfalse;
+static VALUE resolve_symlinks   = Qtrue;
 static VALUE debug              = Qfalse;
 static VALUE track_frame_args   = Qfalse;
 
@@ -509,6 +510,17 @@ save_call_frame(rb_event_flag_t _event, debug_context_t *debug_context, VALUE se
         copy_scalar_args(debug_frame);
 }
 
+char* 
+resolve_symlink(char *file) {
+    char *result;
+#ifdef PATH_MAX
+    result = (char*)malloc(PATH_MAX);
+#else
+    result = NULL;
+#endif
+    return realpath(file, result);
+}
+
 
 #if defined DOSISH
 #define isdirsep(x) ((x) == '/' || (x) == '\\')
@@ -517,7 +529,14 @@ save_call_frame(rb_event_flag_t _event, debug_context_t *debug_context, VALUE se
 #endif
 
 int
-filename_cmp(VALUE source, char *file)
+filename_cmp(VALUE source, char *file) {
+    char* path;
+    path = RTEST(resolve_symlinks) ? resolve_symlink(file) : file;
+    return  filename_cmp_impl(source, path);  
+}
+
+int
+filename_cmp_impl(VALUE source, char *file)
 {
     char *source_ptr, *file_ptr;
     long s_len, f_len, min_len;
@@ -1457,6 +1476,31 @@ static VALUE
 debug_set_keep_frame_binding(VALUE self, VALUE value)
 {
     keep_frame_binding = RTEST(value) ? Qtrue : Qfalse;
+    return value;
+}
+
+/*
+ *   call-seq:
+ *      Debugger.resolve_symlinks? -> bool
+ *
+ *   Returns +true+ if the debugger will resolve symlinks when checking breakpoint.
+ */
+static VALUE
+debug_resolve_symlinks(VALUE self)
+{
+    return resolve_symlinks;
+}
+
+/*
+ *   call-seq:
+ *      Debugger.resolve_symlinks = bool
+ *
+ *   Setting to +true+ will make the debugger resolve symlinks when checking breakpoint.
+ */
+static VALUE
+debug_set_resolve_symlinks(VALUE self, VALUE value)
+{
+    resolve_symlinks = RTEST(value) ? Qtrue : Qfalse;
     return value;
 }
 
@@ -2604,6 +2648,10 @@ Init_ruby_debug()
                   debug_keep_frame_binding, 0);
     rb_define_module_function(mDebugger, "keep_frame_binding=", 
                   debug_set_keep_frame_binding, 1);
+    rb_define_module_function(mDebugger, "resolve_symlinks?", 
+                  debug_resolve_symlinks, 0);
+    rb_define_module_function(mDebugger, "resolve_symlinks=", 
+                  debug_set_resolve_symlinks, 1);              
     rb_define_module_function(mDebugger, "track_frame_args?", 
                   debug_track_frame_args, 0);
     rb_define_module_function(mDebugger, "track_frame_args=", 
