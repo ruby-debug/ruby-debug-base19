@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre5"
+#define DEBUG_VERSION "0.11.30.pre6"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -510,18 +510,6 @@ save_call_frame(rb_event_flag_t _event, debug_context_t *debug_context, VALUE se
         copy_scalar_args(debug_frame);
 }
 
-char* 
-resolve_symlink(char *file) {
-    char *result;
-#ifdef PATH_MAX
-    result = (char*)malloc(PATH_MAX);
-#else
-    result = NULL;
-#endif
-    return realpath(file, result);
-}
-
-
 #if defined DOSISH
 #define isdirsep(x) ((x) == '/' || (x) == '\\')
 #else
@@ -530,9 +518,28 @@ resolve_symlink(char *file) {
 
 int
 filename_cmp(VALUE source, char *file) {
-    char* path;
-    path = RTEST(resolve_symlinks) ? resolve_symlink(file) : file;
-    return  filename_cmp_impl(source, path);  
+    if (!RTEST(resolve_symlinks)) {
+        return filename_cmp_impl(source, file);
+    }
+
+#ifdef PATH_MAX
+    {
+      char path[PATH_MAX + 1];    
+      path[PATH_MAX] = 0;
+
+      if (realpath(source, path) != NULL)
+        return filename_cmp_impl(source, path);
+      else
+        return filename_cmp_impl(source, file);
+    }
+#else
+    {
+      char *path = realpath(file, NULL);
+      result = filename_cmp_impl(source, path == NULL ? file : path);
+      free(path);
+      return result;
+    }
+#endif  
 }
 
 int
