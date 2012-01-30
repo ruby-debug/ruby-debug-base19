@@ -229,10 +229,10 @@ threads_table_mark_keyvalue(st_data_t key, st_data_t value, st_data_t tbl)
     }
     rb_gc_mark((VALUE)value);
     if (is_living_thread(thread)) {
-    rb_gc_mark(thread);
+	rb_gc_mark(thread);
     }
     else {
-    st_insert((st_table *)tbl, key, 0);
+	st_insert((st_table *)tbl, key, 0);
     }
     return ST_CONTINUE;
 }
@@ -431,7 +431,7 @@ thread_context_lookup(VALUE thread, VALUE *context, debug_context_t **debug_cont
     }
     thread_id = ref2id(thread);
     Data_Get_Struct(rdebug_threads_tbl, threads_table_t, threads_table);
-    if(!st_lookup(threads_table->tbl, thread_id, context))
+    if(!st_lookup(threads_table->tbl, thread_id, context) || !*context)
     {
         if (create)
         {
@@ -1213,10 +1213,14 @@ debug_stop(VALUE self)
 }
 
 static int
-find_last_context_func(VALUE key, VALUE value, VALUE *result)
+find_last_context_func(st_data_t key, st_data_t value, st_data_t result_arg)
 {
     debug_context_t *debug_context;
-    Data_Get_Struct(value, debug_context_t, debug_context);
+    VALUE *result = (VALUE *)result_arg;
+    if(!value) {
+        return ST_CONTINUE;
+    }
+    Data_Get_Struct((VALUE)value, debug_context_t, debug_context);
     if(debug_context->thnum == last_debugged_thnum)
     {
         *result = value;
