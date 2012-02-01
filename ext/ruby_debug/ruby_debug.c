@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre7"
+#define DEBUG_VERSION "0.11.30.pre8"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -517,6 +517,9 @@ save_call_frame(rb_event_flag_t _event, debug_context_t *debug_context, VALUE se
 #endif
 
 int
+filename_cmp_impl(VALUE source, char *file);
+
+int
 filename_cmp(VALUE source, char *file) {
     if (!RTEST(resolve_symlinks)) {
         return filename_cmp_impl(source, file);
@@ -527,7 +530,7 @@ filename_cmp(VALUE source, char *file) {
       char path[PATH_MAX + 1];    
       path[PATH_MAX] = 0;
 
-      if (realpath(source, path) != NULL)
+      if (realpath(RSTRING_PTR(source), path) != NULL)
         return filename_cmp_impl(source, path);
       else
         return filename_cmp_impl(source, file);
