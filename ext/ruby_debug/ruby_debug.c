@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre8"
+#define DEBUG_VERSION "0.11.30.pre9"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -521,6 +521,10 @@ filename_cmp_impl(VALUE source, char *file);
 
 int
 filename_cmp(VALUE source, char *file) {
+#ifdef __WIN32__
+    return filename_cmp_impl(source, file);
+#endif
+
     if (!RTEST(resolve_symlinks)) {
         return filename_cmp_impl(source, file);
     }
