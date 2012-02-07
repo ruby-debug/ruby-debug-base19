@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre9"
+#define DEBUG_VERSION "0.11.30.pre10"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -534,7 +534,7 @@ filename_cmp(VALUE source, char *file) {
       char path[PATH_MAX + 1];    
       path[PATH_MAX] = 0;
 
-      if (realpath(RSTRING_PTR(source), path) != NULL)
+      if (realpath(file, path) != NULL)
         return filename_cmp_impl(source, path);
       else
         return filename_cmp_impl(source, file);
