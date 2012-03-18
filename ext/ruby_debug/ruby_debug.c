@@ -521,9 +521,9 @@ filename_cmp_impl(VALUE source, char *file);
 
 int
 filename_cmp(VALUE source, char *file) {
-#ifdef __WIN32__
+#ifdef _WIN32
     return filename_cmp_impl(source, file);
-#endif
+#else
 
     if (!RTEST(resolve_symlinks)) {
         return filename_cmp_impl(source, file);
@@ -546,6 +546,7 @@ filename_cmp(VALUE source, char *file) {
       free(path);
       return result;
     }
+#endif  
 #endif  
 }
 
