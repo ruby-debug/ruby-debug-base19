@@ -43,7 +43,6 @@ EOF
   spec.rubyforge_project = 'ruby-debug19'
   spec.add_dependency('columnize', [">= 0.3.1"])
   spec.add_dependency('ruby_core_source', [">= 0.1.4"])
-  spec.add_dependency('linecache19', [">= 0.5.11"])
   spec.add_dependency("rake", ">= 0.8.1")
 
   # rdoc

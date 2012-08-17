@@ -1,6 +1,5 @@
 require 'ruby_debug'
 require 'rubygems'
-require 'linecache19'
 
 module Debugger
   
@@ -89,19 +88,6 @@ module Debugger
         context.interrupt
       end
       context
-    end
-    
-    def source_reload
-      LineCache::clear_file_cache
-    end
-    
-    # Get line +line_number+ from file named +filename+. Return "\n"
-    # there was a problem. Leaking blanks are stripped off.
-    def line_at(filename, line_number) # :nodoc:
-      @reload_on_change=nil unless defined?(@reload_on_change)
-      line = LineCache::getline(filename, line_number, @reload_on_change)
-      return "\n" unless line
-      return "#{line.gsub(/^\s+/, '').chomp}\n"
     end
 
     #
