@@ -41,7 +41,7 @@ EOF
   spec.required_ruby_version = '>= 1.9'
   spec.date = Time.now
   spec.rubyforge_project = 'ruby-debug19'
-  spec.add_dependency('ruby_core_source', [">= 0.1.4"])
+  spec.add_dependency "debugger-ruby_core_source", '~> 1.1.4'
   spec.add_dependency("rake", ">= 0.8.1")
 
   # rdoc

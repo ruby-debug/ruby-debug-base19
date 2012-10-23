@@ -1,5 +1,19 @@
+# autodetect ruby headers
+unless ARGV.any? {|arg| arg.include?('--with-ruby-include') }
+  require 'rbconfig'
+  bindir = RbConfig::CONFIG['bindir']
+  if bindir =~ %r{(^.*/\.rbenv/versions)/([^/]+)/bin$}
+    ruby_include = "#{$1}/#{$2}/include/ruby-1.9.1/ruby-#{$2}"
+    ARGV << "--with-ruby-include=#{ruby_include}"
+  elsif bindir =~ %r{(^.*/\.rvm/rubies)/([^/]+)/bin$}
+    ruby_include = "#{$1}/#{$2}/include/ruby-1.9.1/#{$2}"
+    ruby_include = "#{ENV['rvm_path']}/src/#{$2}" unless File.exist?(ruby_include)
+    ARGV << "--with-ruby-include=#{ruby_include}"
+  end
+end
+
 require "mkmf"
-require "ruby_core_source"
+require "debugger/ruby_core_source"
 
 hdrs = proc {
   begin
@@ -24,21 +38,11 @@ SRC
 }
 
 dir_config("ruby")
-name = "ruby_debug"
-if (ENV['rvm_ruby_string'])
-  dest_dir = RbConfig::CONFIG["rubyhdrdir"]
-  with_cppflags("-I" + dest_dir) {
-    if hdrs.call
-      create_makefile(name)
-      exit 0
-    end
-  }
-end
-if !Ruby_core_source::create_makefile_with_core(hdrs, name)
+if !Debugger::RubyCoreSource.create_makefile_with_core(hdrs, "ruby_debug")
   STDERR.print("Makefile creation failed\n")
   STDERR.print("*************************************************************\n\n")
-  STDERR.print("  NOTE: For Ruby 1.9 installation instructions, please see:\n\n")
-  STDERR.print("     http://wiki.github.com/mark-moseley/ruby-debug\n\n")
+  STDERR.print("  NOTE: If your headers were not found, try passing\n")
+  STDERR.print("        --with-ruby-include=PATH_TO_HEADERS      \n\n")
   STDERR.print("*************************************************************\n\n")
   exit(1)
 end
