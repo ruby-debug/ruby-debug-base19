@@ -25,3 +25,15 @@ task :test_base => :lib do
     t.verbose = true
   end
 end
+
+desc "Remove built files"
+task :clean do
+  cd "ext/ruby_debug" do
+    if File.exists?("Makefile")
+      sh "make clean"
+      rm  "Makefile"
+    end
+    derived_files = Dir.glob(".o") + Dir.glob("*.so") + Dir.glob("*.bundle") 
+    rm derived_files unless derived_files.empty?
+  end
+end
