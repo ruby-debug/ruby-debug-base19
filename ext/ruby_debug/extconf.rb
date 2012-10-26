@@ -26,16 +26,17 @@ hdrs = proc {
   end and
   have_header("vm_core.h") and have_header("iseq.h") and have_header("insns.inc") and
   have_header("insns_info.inc") and have_header("eval_intern.h")
-  if checking_for(checking_message("if rb_iseq_compile_with_option was added an argument filepath")) do
-    try_compile(<<SRC)
-#include <ruby.h>
-#include "vm_core.h"
-extern VALUE rb_iseq_new_main(NODE *node, VALUE filename, VALUE filepath);
-SRC
-    end
-  $defs << '-DRB_ISEQ_COMPILE_5ARGS'
-  end
+  have_func("rb_iseq_new_main", "vm_core.h")
+  have_func("rb_iseq_compile_on_base", "vm_core.h")
+  have_struct_member("rb_iseq_t", "location", "vm_core.h") or have_struct_member("rb_iseq_t", "filename", "vm_core.h")
+  have_struct_member("rb_iseq_t", "line_info_size", "vm_core.h") or have_struct_member("rb_iseq_t", "insn_info_size", "vm_core.h")
+  have_struct_member("rb_control_frame_t", "ep", "vm_core.h") or 
+    have_struct_member("rb_control_frame_t", "dfp", "vm_core.h")
+  have_struct_member("rb_control_frame_t", "bp", "vm_core.h")
+  true
 }
+
+$defs << "-O0"
 
 dir_config("ruby")
 if !Debugger::RubyCoreSource.create_makefile_with_core(hdrs, "ruby_debug")

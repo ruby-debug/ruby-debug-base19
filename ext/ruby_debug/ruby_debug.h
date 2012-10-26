@@ -45,7 +45,11 @@ typedef struct {
     union {
         struct {
 			rb_control_frame_t *cfp;
-			VALUE *bp;
+#if VM_DEBUG_BP_CHECK
+            VALUE *bp_check;
+#else    
+            VALUE *bp;
+#endif            
 			struct rb_iseq_struct *block_iseq;
 			VALUE *block_pc;
             VALUE *last_pc;
