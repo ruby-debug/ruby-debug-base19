@@ -167,7 +167,9 @@ threadptr_data_type(void)
 }
 
 #define ruby_threadptr_data_type *threadptr_data_type()
-#define ruby_current_thread ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()))
+//#define ruby_current_thread ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()))
+// FIXME: ruby 2.0.0 Error. undefined symbol: ruby_current_thread
+rb_thread_t *ruby_current_thread;
 
 static int
 is_in_locked(VALUE thread_id)
@@ -2678,6 +2680,7 @@ Init_ruby_debug()
     iseq.iseq = &opt_call_c_function;
     iseq.iseq_size = 1;
     iseq.iseq_encoded = NULL;
+    ruby_current_thread = ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()));
 
     opt_call_c_function = (VALUE)BIN(opt_call_c_function);
     rb_iseq_translate_threaded_code(&iseq);
