@@ -24,7 +24,7 @@ int rb_vm_get_sourceline(const rb_control_frame_t *cfp); /* from vm.c */
 /* from iseq.c */
 #ifdef HAVE_RB_ISEQ_COMPILE_ON_BASE
 VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE absolute_path, VALUE line, rb_block_t *base_block, VALUE opt);
-#elif RB_ISEQ_COMPILE_5ARGS
+#elif HAVE_RB_ISEQ_NEW_MAIN
 VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE filepath, VALUE line, VALUE opt);
 #else
 VALUE rb_iseq_compile_with_option(VALUE src, VALUE file, VALUE line, VALUE opt);
@@ -714,7 +714,7 @@ create_catch_table(debug_context_t *debug_context, unsigned long cont)
 #ifdef HAVE_RB_ISEQ_COMPILE_ON_BASE
     catch_table->iseq = rb_iseq_compile_with_option(
         rb_str_new_cstr("begin\nend"), rb_str_new_cstr("(exception catcher)"), Qnil, INT2FIX(1), NULL, Qfalse);
-#elif RB_ISEQ_COMPILE_5ARGS    
+#elif HAVE_RB_ISEQ_NEW_MAIN    
     catch_table->iseq = rb_iseq_compile_with_option(
         rb_str_new_cstr("begin\nend"), rb_str_new_cstr("(exception catcher)"), Qnil, INT2FIX(1), Qfalse);
 #else
