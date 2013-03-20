@@ -878,37 +878,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     {
     case RUBY_EVENT_LINE:
     {
-        if (CTX_FL_TEST(debug_context, CTX_FL_CATCHING))
-        {
-            debug_frame_t *top_frame = get_top_frame(debug_context);
-            
-            if (top_frame != NULL)
-            {
-                rb_control_frame_t *cfp = top_frame->info.runtime.cfp;
-                VALUE hit_count;
-                int c_hit_count;
-                rb_iseq_t *iseq = cfp->iseq; 
-
-                if (iseq != NULL) {
-                    /* restore the proper catch table */
-                    iseq->catch_table_size = debug_context->catch_table.old_catch_table_size;
-                    iseq->catch_table = debug_context->catch_table.old_catch_table;
-                }
-                
-                /* send catchpoint notification */                
-                c_hit_count = FIX2INT(rb_hash_aref(rdebug_catchpoints, debug_context->catch_table.mod_name)) + 1;
-                hit_count = INT2FIX(c_hit_count);
-                rb_hash_aset(rdebug_catchpoints, debug_context->catch_table.mod_name, hit_count);
-                debug_context->stop_reason = CTX_STOP_CATCHPOINT;
-                rb_funcall(context, idAtCatchpoint, 1, debug_context->catch_table.errinfo);
-                if(self && binding == Qnil)
-                    binding = create_binding(self);
-                save_top_binding(debug_context, binding);
-                call_at_line(context, debug_context, rb_str_new2(top_frame->file), INT2FIX(top_frame->line));
-            }
-            
-            break;
-        }
         if(debug_context->stack_size == 0 || 
            get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq ||
            get_top_frame(debug_context)->info.runtime.cfp->iseq != thread->cfp->iseq)
@@ -1029,13 +998,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
         VALUE expn_class, aclass;
         int i;
 
-        if (CTX_FL_TEST(debug_context, CTX_FL_CATCHING)) {
-          /* we're re-raising exception after processing line event, 
-          now allow the next exception to be caught, don't setup catchers */
-          CTX_FL_UNSET(debug_context, CTX_FL_CATCHING);
-          break;    
-        }
-
         if(debug == Qtrue) {
           fprintf(stderr, "stack_size %d\n", debug_context->stack_size);
           for (i = 0; i < debug_context->stack_size; i++) {
@@ -1094,25 +1056,20 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
             if (hit_count != Qnil)
             {
                 debug_frame_t *top_frame = get_top_frame(debug_context);
-                rb_control_frame_t *cfp = top_frame->info.runtime.cfp;
-                rb_iseq_t *iseq = cfp->iseq;
+                VALUE hit_count;
+                int c_hit_count;
                 
-                debug_context->catch_table.mod_name = mod_name;
-                debug_context->catch_table.errinfo = rb_errinfo();
-                CTX_FL_SET(debug_context, CTX_FL_CATCHING);
-                if (iseq != NULL) {
-                                    
-                   /* save the current catch table */
-                    debug_context->catch_table.old_catch_table_size = iseq->catch_table_size;
-                    debug_context->catch_table.old_catch_table = iseq->catch_table;
-                    
-
-                    /* create a new catch table to catch this exception, and put it in the current iseq */
-                    iseq->catch_table_size = 1;
-                    iseq->catch_table =
-                    create_catch_table(debug_context, top_frame->info.runtime.last_pc - cfp->iseq->iseq_encoded - insn_len(BIN(trace)));
-                    break;    
-                }
+                /* send catchpoint notification */                
+                hit_count = rb_hash_aref(rdebug_catchpoints, mod_name);
+                c_hit_count = (hit_count != Qnil ? FIX2INT(hit_count) : 0) + 1;
+                hit_count = INT2FIX(c_hit_count);
+                rb_hash_aset(rdebug_catchpoints, mod_name, hit_count);
+                debug_context->stop_reason = CTX_STOP_CATCHPOINT;
+                rb_funcall(context, idAtCatchpoint, 1, rb_errinfo());
+                if(self && binding == Qnil)
+                    binding = create_binding(self);
+                save_top_binding(debug_context, binding);
+                call_at_line(context, debug_context, rb_str_new2(top_frame->file), INT2FIX(top_frame->line));
             }
         }
 
