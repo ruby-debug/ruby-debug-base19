@@ -16,7 +16,7 @@ require "mkmf"
 require "debugger/ruby_core_source"
 
 hdrs = proc {
-  begin
+  result = begin
     have_struct_member("rb_method_entry_t", "called_id", "method.h") or
     have_struct_member("rb_control_frame_t", "method_id", "method.h")
   end and
@@ -33,7 +33,7 @@ hdrs = proc {
   have_struct_member("rb_control_frame_t", "ep", "vm_core.h") or 
     have_struct_member("rb_control_frame_t", "dfp", "vm_core.h")
   have_struct_member("rb_control_frame_t", "bp", "vm_core.h")
-  true
+  result
 }
 
 $defs << "-O0"
