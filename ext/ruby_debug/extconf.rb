@@ -3,10 +3,10 @@ unless ARGV.any? {|arg| arg.include?('--with-ruby-include') }
   require 'rbconfig'
   bindir = RbConfig::CONFIG['bindir']
   if bindir =~ %r{(^.*/\.rbenv/versions)/([^/]+)/bin$}
-    ruby_include = "#{$1}/#{$2}/include/ruby-1.9.1/ruby-#{$2}"
+    ruby_include = "#{$1}/#{$2}/include/ruby-#{RUBY_VERSION}/ruby-#{$2}"
     ARGV << "--with-ruby-include=#{ruby_include}"
   elsif bindir =~ %r{(^.*/\.rvm/rubies)/([^/]+)/bin$}
-    ruby_include = "#{$1}/#{$2}/include/ruby-1.9.1/#{$2}"
+    ruby_include = "#{$1}/#{$2}/include/ruby-#{RUBY_VERSION}/#{$2}"
     ruby_include = "#{ENV['rvm_path']}/src/#{$2}" unless File.exist?(ruby_include)
     ARGV << "--with-ruby-include=#{ruby_include}"
   end
@@ -37,6 +37,13 @@ hdrs = proc {
 }
 
 $defs << "-O0"
+if RUBY_VERSION >= '2.0.0'
+  # compile on ruby 2.0 , require debugger-ruby_core_source 1.2.0, add INCLUDE path .
+  DHP1=Gem::Specification.to_a.find {|x| x.name=='debugger-ruby_core_source' and x.version.to_s >= '1.2.0'}.full_gem_path
+  DHP="#{DHP1}/lib/debugger/ruby_core_source/ruby-#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
+  RUBY20MACRO="-DHAVE_RB_ISEQ_COMPILE_ON_BASE  -DVM_DEBUG_BP_CHECK -DHAVE_RB_CONTROL_FRAME_T_EP -DHAVE_RB_ISEQ_T_LOCATION -DHAVE_RB_ISEQ_T_LINE_INFO_SIZE "
+  $defs << " #{RUBY20MACRO} -I#{DHP} "
+end
 
 dir_config("ruby")
 if !Debugger::RubyCoreSource.create_makefile_with_core(hdrs, "ruby_debug")

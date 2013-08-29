@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre11"
+#define DEBUG_VERSION "0.11.30.pre12"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -167,7 +167,21 @@ threadptr_data_type(void)
 }
 
 #define ruby_threadptr_data_type *threadptr_data_type()
-#define ruby_current_thread ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()))
+
+// On ruby 1.9.3-xxx GET_THREAD is a macro, on ruby 2.0.0-p0 is a function. <ruby-ver>/vm_core.h
+// CAREFUL: ruby_current_thread, GET_THREAD, rb_thread_set_current_raw
+#if GET_THREAD
+    #define ruby_current_thread ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()))
+    #define GET_THREAD2 GET_THREAD
+#else
+#warning "ruby 2.0.0-p0 GET_THREAD is a function."
+    rb_thread_t *ruby_current_thread;
+    rb_thread_t *GET_THREAD2(void)
+    {
+        ruby_current_thread = ((rb_thread_t *)RTYPEDDATA_DATA(rb_thread_current()));
+        return GET_THREAD();
+    }
+#endif
 
 static int
 is_in_locked(VALUE thread_id)
@@ -502,16 +516,16 @@ save_call_frame(rb_event_flag_t _event, debug_context_t *debug_context, VALUE se
     debug_frame->dead = 0;
     debug_frame->self = self;
     debug_frame->arg_ary = Qnil;
-    debug_frame->argc = GET_THREAD()->cfp->iseq->argc;
-    debug_frame->info.runtime.cfp = GET_THREAD()->cfp;
+    debug_frame->argc = GET_THREAD2()->cfp->iseq->argc;
+    debug_frame->info.runtime.cfp = GET_THREAD2()->cfp;
 #if VM_DEBUG_BP_CHECK
-    debug_frame->info.runtime.bp_check = GET_THREAD()->cfp->bp_check;
+    debug_frame->info.runtime.bp_check = GET_THREAD2()->cfp->bp_check;
 #else    
-    debug_frame->info.runtime.bp = GET_THREAD()->cfp->bp;
+    debug_frame->info.runtime.bp = GET_THREAD2()->cfp->bp;
 #endif    
-    debug_frame->info.runtime.block_iseq = GET_THREAD()->cfp->block_iseq;
+    debug_frame->info.runtime.block_iseq = GET_THREAD2()->cfp->block_iseq;
     debug_frame->info.runtime.block_pc = NULL;
-    debug_frame->info.runtime.last_pc = GET_THREAD()->cfp->pc;
+    debug_frame->info.runtime.last_pc = GET_THREAD2()->cfp->pc;
     if (RTEST(track_frame_args))
         copy_scalar_args(debug_frame);
 }
@@ -618,20 +632,20 @@ set_frame_source(rb_event_flag_t event, debug_context_t *debug_context, VALUE se
     top_frame = get_top_frame(debug_context);
     if(top_frame)
     {
-        top_frame->info.runtime.cfp = GET_THREAD()->cfp;
-        if (top_frame->info.runtime.block_iseq == GET_THREAD()->cfp->iseq)
+        top_frame->info.runtime.cfp = GET_THREAD2()->cfp;
+        if (top_frame->info.runtime.block_iseq == GET_THREAD2()->cfp->iseq)
         {
-            top_frame->info.runtime.block_pc = GET_THREAD()->cfp->pc;
+            top_frame->info.runtime.block_pc = GET_THREAD2()->cfp->pc;
             top_frame->binding = create_binding(self); /* block entered; need to rebind */
         }
-        else if ((top_frame->info.runtime.block_pc != NULL) && (GET_THREAD()->cfp->pc == top_frame->info.runtime.block_pc))
+        else if ((top_frame->info.runtime.block_pc != NULL) && (GET_THREAD2()->cfp->pc == top_frame->info.runtime.block_pc))
         {
             top_frame->binding = create_binding(self); /* block re-entered; need to rebind */
         }
 
-        top_frame->info.runtime.block_iseq = GET_THREAD()->cfp->block_iseq;
+        top_frame->info.runtime.block_iseq = GET_THREAD2()->cfp->block_iseq;
         if (event == RUBY_EVENT_LINE)
-            top_frame->info.runtime.last_pc = GET_THREAD()->cfp->pc;
+            top_frame->info.runtime.last_pc = GET_THREAD2()->cfp->pc;
         top_frame->self = self;
         top_frame->file = file;
         top_frame->line = line;
@@ -708,8 +722,8 @@ create_catch_table(debug_context_t *debug_context, unsigned long cont)
 {
     struct iseq_catch_table_entry *catch_table = &debug_context->catch_table.tmp_catch_table;
 
-    GET_THREAD()->parse_in_eval++;
-    GET_THREAD()->mild_compile_error++;
+    GET_THREAD2()->parse_in_eval++;
+    GET_THREAD2()->mild_compile_error++;
     /* compiling with option Qfalse (no options) prevents debug hook calls during this catch routine */
 #ifdef HAVE_RB_ISEQ_COMPILE_ON_BASE
     catch_table->iseq = rb_iseq_compile_with_option(
@@ -721,8 +735,8 @@ create_catch_table(debug_context_t *debug_context, unsigned long cont)
     catch_table->iseq = rb_iseq_compile_with_option(
         rb_str_new_cstr("begin\nend"), rb_str_new_cstr("(exception catcher)"), INT2FIX(1), Qfalse);
 #endif
-    GET_THREAD()->mild_compile_error--;
-    GET_THREAD()->parse_in_eval--;
+    GET_THREAD2()->mild_compile_error--;
+    GET_THREAD2()->parse_in_eval--;
 
     catch_table->type = CATCH_TYPE_RESCUE;
     catch_table->start = 0;
@@ -755,7 +769,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     char *file = (char*)rb_sourcefile();
     int line = rb_sourceline();
     int moved = 0;
-    rb_thread_t *thread = GET_THREAD();
+    rb_thread_t *thread = GET_THREAD2();
     struct rb_iseq_struct *iseq = thread->cfp->iseq;
 
     hook_count++;
@@ -976,9 +990,9 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
         {
             debug_context->stack_size--;
 #if VM_DEBUG_BP_CHECK
-            if (debug_context->frames[debug_context->stack_size].info.runtime.bp_check <= GET_THREAD()->cfp->bp_check)
+            if (debug_context->frames[debug_context->stack_size].info.runtime.bp_check <= GET_THREAD2()->cfp->bp_check)
 #else           
-            if (debug_context->frames[debug_context->stack_size].info.runtime.bp <= GET_THREAD()->cfp->bp)
+            if (debug_context->frames[debug_context->stack_size].info.runtime.bp <= GET_THREAD2()->cfp->bp)
 #endif               
                 break;
         }
@@ -2533,7 +2547,7 @@ context_pause(VALUE self)
         return(Qfalse);
 
     GetThreadPtr(context_thread_0(debug_context), th);
-    if (th == GET_THREAD())
+    if (th == GET_THREAD2())
         return(Qfalse);
 
     debug_context->thread_pause = 1;
