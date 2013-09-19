@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre14"
+#define DEBUG_VERSION "0.11.30.pre15"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -675,6 +675,34 @@ c_call_new_frame_p(VALUE klass, ID mid)
     return 0;
 }
 
+static int
+remove_pause_flag_i(st_data_t key, st_data_t value, st_data_t dummy)
+{
+    VALUE context;
+    debug_context_t *debug_context;
+
+    context = (VALUE)value;
+    if (!context) 
+    {
+        return ST_CONTINUE;
+    }
+
+    Data_Get_Struct((VALUE)value, debug_context_t, debug_context);
+    debug_context->thread_pause = 0;
+    
+    return ST_CONTINUE;
+}
+
+static void
+remove_pause_flag(void)
+{
+    threads_table_t *threads_table;
+
+    Data_Get_Struct(rdebug_threads_tbl, threads_table_t, threads_table);
+    st_foreach(threads_table->tbl, remove_pause_flag_i, 0);
+}
+
+
 static void 
 call_at_line_check(VALUE self, debug_context_t *debug_context, VALUE breakpoint, VALUE context, char *file, int line)
 {
@@ -700,6 +728,7 @@ call_at_line_check(VALUE self, debug_context_t *debug_context, VALUE breakpoint,
     }
 
     reset_stepping_stop_points(debug_context);
+    remove_pause_flag();
     call_at_line(context, debug_context, rb_str_new2(file), INT2FIX(line));
 }
 
@@ -837,7 +866,6 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
 
     if (debug_context->thread_pause) 
     {
-        debug_context->thread_pause = 0;
         debug_context->stop_next = 1;
         debug_context->dest_frame = -1;
         moved = 1;
