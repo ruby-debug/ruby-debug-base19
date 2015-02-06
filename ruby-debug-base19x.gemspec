@@ -31,8 +31,8 @@ EOF
 
   spec.version = RUBY_DEBUG_VERSION
 
-  spec.author = "Kent Sibilev, Mark Moseley"
-  spec.email = "ksibilev@yahoo.com"
+  spec.author = "Kent Sibilev, Mark Moseley, JetBrains RubyMine Team"
+  spec.email = "rubymine-feedback@jetbrains.com"
   spec.platform = Gem::Platform::RUBY
   spec.require_path = "lib"
   spec.extensions = ["ext/ruby_debug/extconf.rb"]
