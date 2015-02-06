@@ -9,7 +9,7 @@
 #include <insns_info.inc>
 #include "ruby_debug.h"
 
-#define DEBUG_VERSION "0.11.30.pre15"
+#define DEBUG_VERSION "0.11.31"
 
 #define FRAME_N(n)  (&debug_context->frames[debug_context->stack_size-(n)-1])
 #define GET_FRAME   (FRAME_N(check_frame_number(debug_context, frame)))
@@ -906,12 +906,12 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     {
     case RUBY_EVENT_LINE:
     {
-        if(debug_context->stack_size == 0 || 
-           get_top_frame(debug_context)->info.runtime.block_iseq != thread->cfp->block_iseq ||
-           get_top_frame(debug_context)->info.runtime.cfp->iseq != thread->cfp->iseq)
+        if(debug_context->stack_size == 0) {
             save_call_frame(event, debug_context, self, file, line, mid);
-        else
+        }
+        else {
             set_frame_source(event, debug_context, self, file, line, mid);
+        }
 
         if(RTEST(tracing) || CTX_FL_TEST(debug_context, CTX_FL_TRACING))
             rb_funcall(context, idAtTracing, 2, rb_str_new2(file), INT2FIX(line));
@@ -986,8 +986,9 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
     case RUBY_EVENT_C_RETURN:
     {
         /* note if a block is given we fall through! */
-        if(!rb_method_boundp(klass, mid, 0) || !c_call_new_frame_p(klass, mid))
+        if(!rb_method_boundp(klass, mid, 0) || !c_call_new_frame_p(klass, mid)) {
             break;
+        }
     }
     case RUBY_EVENT_RETURN:
     case RUBY_EVENT_END:
