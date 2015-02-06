@@ -7,3 +7,5 @@
 ext/ruby_debug/Makefile
 ext/ruby_debug/mkmf.log
 /nbproject/private/
+Gemfile.lock
+.idea
