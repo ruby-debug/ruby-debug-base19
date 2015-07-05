@@ -996,7 +996,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
         if(debug_context->stack_size == debug_context->stop_frame)
         {
             debug_context->stop_next = 1;
-            debug_context->stop_frame = 0;
+            debug_context->stop_frame = -1;
             /* NOTE: can't use call_at_line function here to trigger a debugger event.
                this can lead to segfault. We should only unroll the stack on this event.
              */
