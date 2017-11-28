@@ -86,6 +86,7 @@ typedef struct locked_thread_t {
 
 static locked_thread_t *locked_head = NULL;
 static locked_thread_t *locked_tail = NULL;
+static rb_event_flag_t last_hook_event = RUBY_EVENT_NONE;
 
 /* "Step", "Next" and "Finish" do their work by saving information
    about where to stop next. reset_stopping_points removes/resets this
@@ -876,7 +877,7 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
         if (CTX_FL_TEST(debug_context, CTX_FL_SKIPPED)) 
             goto cleanup;
 
-        if ((event == RUBY_EVENT_LINE) && (debug_context->stack_size > 0) && 
+        if ((event == RUBY_EVENT_LINE) && (last_hook_event == RUBY_EVENT_LINE) && (debug_context->stack_size > 0) &&
             (get_top_frame(debug_context)->line == line) && (get_top_frame(debug_context)->info.runtime.cfp->iseq == iseq) &&
             !CTX_FL_TEST(debug_context, CTX_FL_CATCHING))
         {
@@ -885,6 +886,8 @@ debug_event_hook(rb_event_flag_t event, VALUE data, VALUE self, ID mid, VALUE kl
             goto cleanup;
         }
     }
+
+    last_hook_event = event;
 
     if(debug == Qtrue)
         fprintf(stderr, "%s:%d [%s] %s\n", file, line, get_event_name(event), rb_id2name(mid));
