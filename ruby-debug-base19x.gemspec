@@ -37,6 +37,7 @@ EOF
   spec.require_path = "lib"
   spec.extensions = ["ext/ruby_debug/extconf.rb"]
   spec.files = FILES
+  spec.license = "Simplified BSD License"
 
   spec.required_ruby_version = '>= 1.9'
   spec.date = Time.now
